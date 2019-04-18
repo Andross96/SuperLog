@@ -1,0 +1,7 @@
+Remade: v1:
+  -> Fixed compatibility: [1.7-1.13.2]
+  -> You can now use '*' in every lists of the config to include all
+  -> You can now add a "{EVENT}" in 'logsSavingFilesFormat', to save each events in differents files
+  -> Code enhancements:
+    -> Improved thread safety & concurrent operations.
+    -> General cleaning & code optimisation
