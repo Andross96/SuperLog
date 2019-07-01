@@ -1,0 +1,34 @@
+# +————————————————————————————————————————————————————+ #
+# |——————————     SUPERLOG CONFIGURATION     ——————————| #
+# |——————————————————      v1        ——————————————————| #
+# +————————————————————————————————————————————————————+ #
+# |                   Documentation:                   | #
+# |            https://superlog.andross.fr/            | #
+# +————————————————————————————————————————————————————+ #
+
+save-delay: 300
+date-format: 'HH:mm:ss'
+logsFormat: '{DAY}-{MONTH}-{YEAR}_{TYPE}.log'
+logsLiveFormat: '&7&o[{TIME}][{EVENT}] {LOG}'
+logsInConsole: true
+logsInGame: false
+
+gzipLogsAfter: 2
+deleteLogs:
+  after: 7
+  evenGZippedLogs: true
+
+alertCommands:
+  - /gamemode
+  - /god
+
+messages:
+  prefix: '&3&l[&e&lLOG&3&l] '
+  noperm: '&cYou don''t have permission.'
+  logsSaved: '&7Saved {OCCURRENCES} files.'
+  alertCommandsFormat: '&7&l{PLAYER}&7 used: &e{COMMAND}'
+
+events:
+  AsyncPlayerChatEvent:
+    enabled: true
+    message: 'said {MESSAGE}'

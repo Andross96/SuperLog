@@ -1,7 +1,111 @@
-Remade: v1:
+v1.0 [RECODED]:
+  -> You can now listen to all events
+  -> More personnalizable configuration, with more customizable messages
+  -> Created a full documentation: https://superlog.andross.fr/
+--------------------------------------------
+v1.5:
   -> Fixed compatibility: [1.7-1.13.2]
   -> You can now use '*' in every lists of the config to include all
   -> You can now add a "{EVENT}" in 'logsSavingFilesFormat', to save each events in differents files
+  -> You can now choose if "deleteOldLogs" delete also GZipped files
   -> Code enhancements:
     -> Improved thread safety & concurrent operations.
+    -> Only activated events are listened! (performance++)
     -> General cleaning & code optimisation
+  -> Added lot of new events logging: (all configurable)
+    For players:
+    -> PlayerAdvancementDoneEvent (log when a player get an advancement)
+    -> PlayerArmorStandManipulateEvent (log when a player interacts with an armor stand and will either swap, retrieve or place an item.)
+    -> PlayerBedEnterEvent & PlayerBedLeaveEvent
+    -> PlayerFishEvent
+    -> EntityPickupItemEvent (when a player pick an item)
+    -> PlayerRespawnEvent
+    -> PlayerItemConsumeEvent (when a player use item (food, potion, milk bucket))
+    For blocks:
+    -> BlockPistonEvent (when a piston is triggered)
+    -> SignChangeEvent (when a player change a sign)
+    For server:
+    -> PluginDisableEvent (when a plugin is disabled)
+    -> PluginEnableEvent
+    -> ServerCommandEvent (when server execute a command)
+    -> RemoteServerCommandEvent (same as ServerCommandEvent, but remotely)
+    New Entity releated events:
+    -> EntityDeathEvent (when any entity died)
+    -> EntityDropItemEvent
+    -> EntityExplodeEvent
+    -> EntityInteractEvent
+    -> EntityPickupItemEvent
+    -> EntitySpawnEvent
+    -> SlimeSplitEvent
+    -> VillagerAcquireTradeEvent
+    Others:
+    -> CraftItemEvent (when an item is crafted)
+    -> ItemDespawnEvent (when a drop disappear)
+    -> EnchantItemEvent (when an item is successfully enchanted)
+    -> VehicleCreateEvent (when a vehicle is created)
+    -> VehicleDestroyEvent
+    -> VehicleEnterEvent
+    -> WeatherChangeEvent
+--------------------------------------------
+v1.4.2:
+  -> Fixed GZipLogs and deleteOldLogs timing (milliseconds problem -> forgot 1 zero in multiplication)
+--------------------------------------------
+v1.4.1:
+  -> Fixed compatibility with Citizens plugin
+--------------------------------------------
+v1.4:
+  -> New language: Dutch (thanks to Kyllian)
+  -> New language: Traditional Chinese (thanks to qsefthuopq)
+  -> Config:
+    -> Added "deleteLogsAfter": the plugin will delete olds logs (in days) at the start (only players logs)
+    -> Added "gzipLogsAfter": the plugin will gzip olds logs (in days) at the start (only players logs)
+  -> Commands:
+    -> New command /log toggle: to temporary disable or enable the plugin
+    -> New command: /log filtrer <playerName> <eventName>: to save in logs_filtered/filtered.log logs about <playerName> releated to <eventName>
+    -> New command: /log live <playerName>: you will receive live messages logs
+    -> Command /log save isn't anymore case sensitive
+--------------------------------------------
+v1.3:
+  -> Events:
+    -> BlockBreakEvent & BlockPlaceEvent: you can now choose to ignore some blocks for logging, or you can log only specific blocks.
+       Combine them, and you'll can log every specific blocs you want.
+  -> Config:
+    -> Added 'logsSavingFilesFormat': format your own file names for logs
+    -> Added 'logsForEachPlayers': saving player logs into differents folders & files
+    -> Added 'logsOnlyPlayerList': logs only players written in 'players.list'
+    -> Added more configurable BlockBreakEvent & BlockPlaceEvent
+  -> Bug fixes:
+    -> Fixed world name for PlayerInteractEvent & PlayerInteractEntityEvent: now properly written in logs
+    -> Fixed some rare issue about synchronisation (improved thread safety)
+    -> Fixed command /log save
+    -> Fixed tabCompletition for commands
+    -> Logs now properly saves on server shutdown
+  -> Dev notes:
+    -> Deleted permissions enum (now hardcoded)
+    -> Some code enhancement in listeners
+--------------------------------------------
+v1.2:
+  -> Config:
+    -> Renamed "PlayerCommandPreprocessEvent" option "ignore-command-list" to "ignored-commands" (was a bit ambiguous)
+    -> New language: Russian (thanks to TAKKI)
+  -> Bug fixes:
+    -> Fixed potential concurrent errors (threads)
+    -> Fixed errors with wrong language file utilisation
+    -> Fixed {IP} from player join & player quit: now properly written in logs
+--------------------------------------------
+v1.1:
+  -> Events:
+    -> Added new event PlayerInteractEvent: can log customizable left & right events clicks for blocks
+    -> Added new event PlayerInteractEntityEvent: can log customizable right events clicks for entities
+    -> PlayerCommandPreprocessEvent: added an "ignore-command-list" option: those commands will not be logged
+    -> PlayerJoinEvent and PlayerQuitEvent: now also log the ip address
+  -> Config:
+    -> New option 'logsOnlyWithPerm' (boolean): if activated, the plugin will log only players with "superlog.logme" perm
+    -> Reorganization of the player events, to looks more clear
+  -> Others:
+    -> Fixed /log reload command: now properly save the logs before reloading
+    -> Changed visual text in /log save command
+    -> Fixes & others optimisations in code
+    -> Events are now correctly prioritized by server, and do not active if they are cancelled
+--------------------------------------------
+v1: Initial release
