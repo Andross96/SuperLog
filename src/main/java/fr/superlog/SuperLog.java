@@ -14,6 +14,7 @@ public class SuperLog extends JavaPlugin {
 
     @Override
     public void onEnable() {
+    	Log.LOGGER = getLogger();
 		log = new Log(this);
 
 		// Utilities

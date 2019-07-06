@@ -47,21 +47,21 @@ public class LogEvents {
     protected LogEvents runPlayerEvents(boolean isCitizensEnabled){
         // Getting Player
         final Player p = ((PlayerEvent)e).getPlayer();
-        if(Log.isDebug()) Log.getLogger().info("[Debug] Started " + e.getEventName());
+        if(Log.DEBUG) Log.LOGGER.info("[Debug] Started " + e.getEventName());
         // Checking if it's a npc
         if(isCitizensEnabled && p.hasMetadata("NPC")) return null;
 
         // Checking conditions
         if(s.isAnIgnoredEvent(p.getName(), null)) return null;
-        if(Log.isDebug()) Log.getLogger().info("[Debug] Condition: ok");
+        if(Log.DEBUG) Log.LOGGER.info("[Debug] Condition: ok");
         if(s.serializeFields(e)) return null;
-        if(Log.isDebug()) Log.getLogger().info("[Debug] Fields condition: ok");
+        if(Log.DEBUG) Log.LOGGER.info("[Debug] Fields condition: ok");
 
         // Serializing the rest of the event
         playerName = p.getName();
         eventType = "PlayerEvents";
         s.serialize(p, null);
-        if(Log.isDebug()) Log.getLogger().info("[Debug] Serializing: ok");
+        if(Log.DEBUG) Log.LOGGER.info("[Debug] Serializing: ok");
         return this;
     }
 

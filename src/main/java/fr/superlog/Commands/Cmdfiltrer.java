@@ -60,7 +60,7 @@ public class Cmdfiltrer implements Cmd {
 						}
 					}catch(Exception e) {
 						sender.sendMessage(log.getUtils().color(prefix + "&cUnable to read " + file.getName()));
-						if(Log.isDebug()) e.printStackTrace();
+						if(Log.DEBUG) e.printStackTrace();
 					}
 				}
 

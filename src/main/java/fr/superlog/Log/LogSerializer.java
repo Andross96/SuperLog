@@ -64,7 +64,7 @@ public class LogSerializer {
             try {
                 o = f.get(e);
             }catch(Exception ex){
-                Log.getLogger().info("Unknown field '" + f.getName() + "' for event '" + e.getEventName() + "'.");
+                Log.LOGGER.info("Unknown field '" + f.getName() + "' for event '" + e.getEventName() + "'.");
                 continue;
             }
             if(o == null) continue;
@@ -118,7 +118,7 @@ public class LogSerializer {
                         }
                     }
                 } catch (Exception ex) {
-                    Log.getLogger().info("Unsupported list '" + fieldName + "' for '" + e.getEventName() + "'.");
+                    Log.LOGGER.info("Unsupported list '" + fieldName + "' for '" + e.getEventName() + "'.");
                 }
             }else if(o instanceof Map) {
                 try {
@@ -133,7 +133,7 @@ public class LogSerializer {
                     }
                     replace("{" + fieldName + "}", message.toString());
                 } catch (Exception ex) {
-                    Log.getLogger().info("Invalid map for '" + e.getEventName() + "'. Only Map<Enchantement, Integer> is supported");
+                    Log.LOGGER.info("Invalid map for '" + e.getEventName() + "'. Only Map<Enchantement, Integer> is supported");
                 }
             }else if(o instanceof MerchantRecipe) replace("{" + fieldName + "}", ((MerchantRecipe)o).getResult().getType().name());
             else if(o instanceof Enum){

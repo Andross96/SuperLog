@@ -15,9 +15,9 @@ public class Cmddebug implements Cmd {
 			return;
 		}
 
-		log.toggleDebug();
+		Log.toggleDebug();
 
-		if(!log.isDebug()) sender.sendMessage(log.getUtils().color(prefix + "&eDebug: &c&lOFF&e."));
+		if(!Log.DEBUG) sender.sendMessage(log.getUtils().color(prefix + "&eDebug: &c&lOFF&e."));
 		else sender.sendMessage(log.getUtils().color(prefix + "&eDebug: &2&lON&e."));
 	}
 

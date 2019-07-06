@@ -14,11 +14,12 @@ import java.util.*;
 import java.util.logging.Logger;
 
 public final class Log {
+    public static Logger LOGGER;
+    public static boolean DEBUG;
+
     private final Plugin pl;
     private final LogUtils utils;
     private final LogConfig config;
-    private final static Logger logger = Logger.getLogger("SuperLog");
-    private static boolean debug;
     private final Map<File, ArrayList<String>> cache = new HashMap<>();
     private final Map<String, CommandSender> logLive = new HashMap<>();
     private BukkitTask task = null;
@@ -30,7 +31,7 @@ public final class Log {
     }
 
     public void log(final LogEvents log){
-        if(isDebug()) logger.info("[Debug] Start log processing..");
+        if(DEBUG) LOGGER.info("[Debug] Start log processing..");
         if (log == null) return;
 
         // Adding log
@@ -52,7 +53,7 @@ public final class Log {
             cache.put(f, logs);
         }
 
-        if(isDebug()) logger.info("[Debug] Log: OK");
+        if(DEBUG) LOGGER.info("[Debug] Log: OK");
         // Live logging:
         if(logLive.isEmpty() || log.getPlayerName() == null) return;
         final CommandSender sender = logLive.get(log.getPlayerName());
@@ -79,7 +80,7 @@ public final class Log {
             }
         } catch(Exception e) {
             e.printStackTrace();
-            logger.warning("Error writing logs in " + f.getName());
+            LOGGER.warning("Error writing logs in " + f.getName());
             return 0;
         }
 
@@ -108,7 +109,7 @@ public final class Log {
         final String logMessage = config.getMessage("logsSaved").replace("{OCCURRENCES}", String.valueOf(count));
         if(config.getLogsInConsole()) {
             final String message = utils.decolor(logMessage);
-            logger.info(message);
+            LOGGER.info(message);
         }
         if(config.getLogsInGame()) {
             final String message = utils.color(logMessage);
@@ -135,16 +136,13 @@ public final class Log {
 
     public final Plugin getPlugin(){ return pl; }
 
-    public static Logger getLogger(){ return logger; }
-
     public final LogConfig getConfig(){ return config; }
 
     public final LogUtils getUtils(){ return utils; }
 
     public final Map<String, CommandSender> getLogLive(){ return logLive; }
 
-    public static boolean isDebug(){ return debug; }
-    public static void toggleDebug(){ debug = !debug; }
+    public static void toggleDebug(){ DEBUG = !DEBUG; }
 
     protected final BukkitTask getTask(){ return task; }
 

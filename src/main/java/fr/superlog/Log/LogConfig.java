@@ -40,15 +40,15 @@ public final class LogConfig {
         int save_delay = config.getInt("save-delay");
         if(save_delay < 0) {
             config.set("save-delay", 300);
-            Log.getLogger().warning("Save-delay invalid in config.yml. Using default: 300s.");
+            Log.LOGGER.warning("Save-delay invalid in config.yml. Using default: 300s.");
         }
 
         try {
             log.getUtils().getTime(config.getString("date-format"));
         }catch(Exception e) {
-            if(Log.isDebug()) e.printStackTrace();
+            if(Log.DEBUG) e.printStackTrace();
             config.set("date-format", "HH:mm:ss");
-            Log.getLogger().warning("Invalid 'date-format' in config.yml. Using default formatting instead.");
+            Log.LOGGER.warning("Invalid 'date-format' in config.yml. Using default formatting instead.");
         }
 
         String logsFormat = config.getString("logsFormat");
@@ -57,15 +57,15 @@ public final class LogConfig {
             char[] forbiddenFileNameChar = { '/', '\n', '\r', '\t', '\0', '\f', '`', '?', '*', '\\', '<', '>', '|', '\"', ':' };
             for(char c : forbiddenFileNameChar) if(logsFormat.indexOf(c) > 0) throw new Exception();
         }catch(Exception e) {
-            if(Log.isDebug()) e.printStackTrace();
+            if(Log.DEBUG) e.printStackTrace();
             config.set("logsFormat", "{DAY}-{MONTH}-{YEAR}_{TYPE}.log");
-            Log.getLogger().warning("Invalid logsFormat set in config.yml. Using default.");
+            Log.LOGGER.warning("Invalid logsFormat set in config.yml. Using default.");
         }
 
         String logsLiveFormat = config.getString("logsLiveFormat");
         if(logsLiveFormat == null || logsLiveFormat.isEmpty()){
             config.set("logsLiveFormat", "&7&o[{TIME}][{EVENT}] {LOG}.log");
-            Log.getLogger().warning("Invalid logsFormat set in config.yml. Using default.");
+            Log.LOGGER.warning("Invalid logsFormat set in config.yml. Using default.");
         }
 
 
@@ -96,7 +96,7 @@ public final class LogConfig {
         // Load events
         final ConfigurationSection events = config.getConfigurationSection("events");
         if(events == null) {
-            Log.getLogger().warning("[!!] There is nothing to log. Add events in config.yml.");
+            Log.LOGGER.warning("[!!] There is nothing to log. Add events in config.yml.");
             return;
         }
         
@@ -112,7 +112,7 @@ public final class LogConfig {
             // Getting event class
             final Class<? extends Event> eventClass = getEventClass(eventName);
             if(eventClass == null){
-                Log.getLogger().warning("[!!] Can't load event '" + eventName + "': event class is not found.");
+                Log.LOGGER.warning("[!!] Can't load event '" + eventName + "': event class is not found.");
                 continue;
             }
             
@@ -143,7 +143,7 @@ public final class LogConfig {
                         }
                     }
 
-                    if(f == null) Log.getLogger().warning("[!!] Can not found field '" + field + "' for event '" + eventName + "'.");
+                    if(f == null) Log.LOGGER.warning("[!!] Can not found field '" + field + "' for event '" + eventName + "'.");
                 }
                 arg = arg.contains(".") ? arg.split("\\.")[1].toUpperCase() : arg.toUpperCase();
                 args.add(arg);
@@ -159,7 +159,7 @@ public final class LogConfig {
                 List<String> list;
                 if(!event.isList(condition)){ // Try to get conditions from a String
                     if(!event.isString(condition)) {
-                        Log.getLogger().warning("[!!] Invalid condition list '" + condition + "' for event '" + eventName + "'.");
+                        Log.LOGGER.warning("[!!] Invalid condition list '" + condition + "' for event '" + eventName + "'.");
                         errorInConditions = true;
                         break;
                     }
@@ -185,7 +185,7 @@ public final class LogConfig {
                         }
                     }
                     if(f == null){
-                        Log.getLogger().warning("[!!] Unknown condition '" + condition + "': unknown field '" + field + "' for event '" + eventName + "'.");
+                        Log.LOGGER.warning("[!!] Unknown condition '" + condition + "': unknown field '" + field + "' for event '" + eventName + "'.");
                         errorInConditions = true;
                         break;
                     }
@@ -207,7 +207,7 @@ public final class LogConfig {
             // Creating the EventExecutor method, based on event type
             final EventExecutor eventExecutor = createEventExecutor(log, eventClass, logEvent);
             if(eventExecutor == null){
-                Log.getLogger().warning("[!!] Event '" + eventName + "' is not supported yet.");
+                Log.LOGGER.warning("[!!] Event '" + eventName + "' is not supported yet.");
                 continue;
             }
 
@@ -218,22 +218,22 @@ public final class LogConfig {
             try {
                 pl.getServer().getPluginManager().registerEvent(eventClass, listener, priority, eventExecutor, log.getPlugin(), true);
             }catch(Exception ex){
-                if(Log.isDebug())ex.printStackTrace();
-                Log.getLogger().warning("[!!] Event '" + eventName + "' is not valid or not supported yet.");
+                if(Log.DEBUG) ex.printStackTrace();
+                Log.LOGGER.warning("[!!] Event '" + eventName + "' is not valid or not supported yet.");
             }
             count++; // one more event registered
         }
 
         // Result
-        if(count == 0) Log.getLogger().warning("[!!] There is nothing to log. Add events in config.yml.");
-        else if(count == 1) Log.getLogger().info("Listening to 1 event.");
-        else Log.getLogger().info("Listening to " + count + " events.");
+        if(count == 0) Log.LOGGER.warning("[!!] There is nothing to log. Add events in config.yml.");
+        else if(count == 1) Log.LOGGER.info("Listening to 1 event.");
+        else Log.LOGGER.info("Listening to " + count + " events.");
 
         // Running async loop for saving cache
         if(save_delay != 0 && count != 0) {
             if (log.getTask() != null) log.getTask().cancel();
             pl.getServer().getScheduler().runTaskTimerAsynchronously(pl, log::saveAll, 0L, (long) (save_delay * 20));
-            Log.getLogger().info("Saving logs async each " + save_delay + " seconds.");
+            Log.LOGGER.info("Saving logs async each " + save_delay + " seconds.");
         }
     }
 

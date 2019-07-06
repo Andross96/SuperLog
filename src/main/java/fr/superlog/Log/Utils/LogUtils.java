@@ -37,8 +37,8 @@ public class LogUtils {
                 if(!directory.exists()) if(!directory.mkdirs()) throw new Exception();
                 if(!f.createNewFile()) throw new Exception();
             }catch(Exception e) {
-                Log.getLogger().warning("Can't create log file " + f.getName());
-                if(Log.isDebug()) e.printStackTrace();
+                Log.LOGGER.warning("Can't create log file " + f.getName());
+                if(Log.DEBUG) e.printStackTrace();
                 return false;
             }
         }
@@ -58,7 +58,7 @@ public class LogUtils {
         try {
             if(days == 0) return;
             if(days < 0) {
-                Log.getLogger().warning("Invalid 'gzipLogsAfter' in config.yml: must indicate a positive number of days");
+                Log.LOGGER.warning("Invalid 'gzipLogsAfter' in config.yml: must indicate a positive number of days");
                 return;
             }
 
@@ -68,12 +68,11 @@ public class LogUtils {
             int count = 0;
 
             count += gzipOldLog(dataFolder + File.separator + "logs" + File.separator, daysTimeStamp);
-            if(count != 0) Log.getLogger().info("GZipped " + count + " old logs.");
+            if(count != 0) Log.LOGGER.info("GZipped " + count + " old logs.");
         } catch(Exception e) {
-            if(Log.isDebug()) e.printStackTrace();
-            Log.getLogger().info("Unknown error during gziping old logs.");
+            if(Log.DEBUG) e.printStackTrace();
+            Log.LOGGER.info("Unknown error during gziping old logs.");
         }
-
     }
 
     public int gzipOldLog(String directoryName, long dayPassed) {
@@ -94,16 +93,15 @@ public class LogUtils {
 
             // Writing
             try(FileInputStream newFile = new FileInputStream(file);
-                GZIPOutputStream gzip = new GZIPOutputStream(new FileOutputStream(new File(file, file.getName() + ".gz")))){
+                GZIPOutputStream gzip = new GZIPOutputStream(new FileOutputStream(new File(file.getParent(), file.getName() + ".gz")))){
                 byte[] buffer = new byte[1024];
                 int len;
                 while((len=newFile.read(buffer)) != -1) gzip.write(buffer, 0, len);
                 gzip.finish();
-                count++;
             } catch (Exception e) {
-                Log.getLogger().info("Error during GZipping " + file.getName() + ".");
+                Log.LOGGER.info("Error during GZipping " + file.getName() + ".");
+                continue;
             }
-
             file.delete();
             count++;
         }
@@ -114,7 +112,7 @@ public class LogUtils {
         try {
             if(days == 0) return;
             if(days < 0) {
-                Log.getLogger().warning("Invalid 'deleteLogsAfter' in config.yml: must indicate a positive number of days");
+                Log.LOGGER.warning("Invalid 'deleteLogsAfter' in config.yml: must indicate a positive number of days");
                 return;
             }
 
@@ -124,10 +122,10 @@ public class LogUtils {
             int count = 0;
 
             count += deleteOldLog(dataFolder + File.separator + "logs" + File.separator, daysTimeStamp, evenGZippedLogs);
-            if(count != 0) Log.getLogger().info("Deleted " + count + " old logs.");
+            if(count != 0) Log.LOGGER.info("Deleted " + count + " old logs.");
         } catch(Exception e) {
-            if(Log.isDebug()) e.printStackTrace();
-            Log.getLogger().info("Error during deleting old logs.");
+            if(Log.DEBUG) e.printStackTrace();
+            Log.LOGGER.info("Error during deleting old logs.");
         }
     }
 
@@ -147,12 +145,15 @@ public class LogUtils {
             if((System.currentTimeMillis() - file.lastModified()) < dayPassed) continue;
 
             // Checking if it deletes even GZip file
-            try {
-                if(!evenGZippedLogs) {
-                    String fileName = file.getName();
-                    if((fileName.substring(fileName.lastIndexOf("."))).equals(".gz")) continue;
+            if (!evenGZippedLogs) {
+                try {
+                    final String fileName = file.getName();
+                    if ((fileName.substring(fileName.lastIndexOf("."))).equals(".gz")) continue;
+                } catch (Exception e) {
+                    if(Log.DEBUG) e.printStackTrace();
+                    continue;
                 }
-            }catch(Exception e) { continue; }
+            }
 
             file.delete();
             count++;
