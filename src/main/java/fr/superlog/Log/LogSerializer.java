@@ -70,8 +70,10 @@ public class LogSerializer {
             if(o == null) continue;
 
             final String fieldName = f.getName().toUpperCase();
-            if (o instanceof String) replace("{" + fieldName + "}", (String)o);
-            else if (o instanceof Integer || o instanceof Boolean) replace("{" + fieldName + "}", String.valueOf(o));
+            if (o instanceof String) {
+                if(isAnIgnoredEvent((String)o, fieldName)) return true;
+                replace("{" + fieldName + "}", (String)o);
+            } else if (o instanceof Integer || o instanceof Boolean) replace("{" + fieldName + "}", String.valueOf(o));
             else if (o instanceof Advancement) replace("{" + fieldName + "}", ((Advancement)o).getKey().getKey());
             else if (o instanceof AnimalTamer) replace("{" + fieldName + "}", ((AnimalTamer)o).getName());
             else if (o instanceof ItemStack || o instanceof Item) {

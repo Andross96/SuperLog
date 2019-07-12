@@ -1,10 +1,12 @@
+v1.1.1:
+  -> Added String conditions compatibility (for example, you can now ignore some commands in PlayerCommandPreprocessEvent)
+  -> Fixed material compatibility (through differents versions)
+--------------------------------------------
 v1.1:
   -> Fixed auto GZipping logs
 --------------------------------------------
 v1.0 [RECODED]:
-  -> You can now log all events
-  -> Added events conditions
-  -> Added new commands
+  -> You can now listen to all events
   -> More personnalizable configuration, with more customizable messages
   -> Created a full documentation: https://superlog.andross.fr/
 --------------------------------------------
