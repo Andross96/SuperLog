@@ -1,6 +1,6 @@
 name: SuperLog
-main: fr.superlog.SuperLog
-version: '1.1.1'
+main: fr.andross.superlog.SuperLog
+version: '1.1.5'
 author: _Andross
 description: Async logging in files for events
 api-version: '1.13'

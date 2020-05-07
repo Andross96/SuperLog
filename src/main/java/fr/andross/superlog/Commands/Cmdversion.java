@@ -1,10 +1,10 @@
-package fr.superlog.Commands;
+package fr.andross.superlog.Commands;
+
+import fr.andross.superlog.Log.Log;
+import org.bukkit.command.CommandSender;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import fr.superlog.Log.Log;
-import org.bukkit.command.CommandSender;
 
 public class Cmdversion implements Cmd {
 

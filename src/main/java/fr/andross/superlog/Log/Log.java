@@ -1,8 +1,9 @@
-package fr.superlog.Log;
+package fr.andross.superlog.Log;
 
-import fr.superlog.Log.Utils.LogUtils;
+import fr.andross.superlog.Log.Utils.LogUtils;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -20,44 +21,45 @@ public final class Log {
     private final Plugin pl;
     private final LogUtils utils;
     private final LogConfig config;
-    private final Map<File, ArrayList<String>> cache = new HashMap<>();
+    private final Map<File, List<String>> cache = new HashMap<>();
     private final Map<String, CommandSender> logLive = new HashMap<>();
     private BukkitTask task = null;
 
-    public Log(final Plugin pl){
+    public Log(final Plugin pl) {
         this.pl = pl;
         this.utils = new LogUtils();
         this.config = new LogConfig(this);
     }
 
-    public void log(final LogEvents log){
+    public void log(final LogEvents log) {
         if(DEBUG) LOGGER.info("[Debug] Start log processing..");
         if (log == null) return;
 
         // Adding log
         final File f = utils.generateFile(log, pl.getDataFolder(), config.getLogsFormat());
-        final String message = "[" + utils.getTime(config.getDateFormat()) + "][" + log.getEventName() + "]: " + log.getMessage();
-
+        String cancelled = "";
+        if (log.getEvent() instanceof Cancellable) cancelled = ((Cancellable)log.getEvent()).isCancelled() ? "[Cancelled]" : "";
+        final String message = "[" + utils.getTime(config.getDateFormat()) + "][" + log.getEventName() + "]" + cancelled + ": " + log.getMessage();
 
         synchronized(cache) {
             // Adding directly in file
-            if(config.getSaveDelay() == 0) {
+            if (config.getSaveDelay() == 0) {
                 save(f, new String[] { message });
                 return;
             }
 
             // Or adding in cache
-            ArrayList<String> logs = cache.get(f);
+            List<String> logs = cache.get(f);
             if (logs == null) logs = new ArrayList<>();
             logs.add(message);
             cache.put(f, logs);
         }
 
-        if(DEBUG) LOGGER.info("[Debug] Log: OK");
+        if (DEBUG) LOGGER.info("[Debug] Log: OK");
         // Live logging:
-        if(logLive.isEmpty() || log.getPlayerName() == null) return;
+        if (logLive.isEmpty() || log.getPlayerName() == null) return;
         final CommandSender sender = logLive.get(log.getPlayerName());
-        if(sender == null || (sender instanceof Player && !((Player)sender).isOnline())){ // Disconnected
+        if (sender == null || (sender instanceof Player && !((Player)sender).isOnline())){ // Disconnected
             logLive.remove(log.getPlayerName());
             return;
         }
@@ -78,25 +80,25 @@ public final class Log {
                 writer.append(message);
                 writer.append(System.lineSeparator());
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             LOGGER.warning("Error writing logs in " + f.getName());
             return 0;
         }
 
         // Clearing cache
-        if(cache.containsKey(f)) cache.get(f).clear();
+        if (cache.containsKey(f)) cache.get(f).clear();
         return 1;
     }
 
     public int saveAll() {
         int count = 0;
 
-        synchronized(cache) {
-            Iterator<Map.Entry<File, ArrayList<String>>> i = cache.entrySet().iterator();
+        synchronized (cache) {
+            final Iterator<Map.Entry<File, List<String>>> i = cache.entrySet().iterator();
             while (i.hasNext()) {
-                Map.Entry<File, ArrayList<String>> map = i.next();
-                final ArrayList<String> logs = map.getValue();
+                final Map.Entry<File, List<String>> map = i.next();
+                final List<String> logs = map.getValue();
                 if (logs == null || logs.isEmpty()) {
                     i.remove();
                     continue;
@@ -105,16 +107,16 @@ public final class Log {
             }
         }
 
-        if(!pl.isEnabled() || count == 0) return count;
+        if (!pl.isEnabled() || count == 0) return count;
         final String logMessage = config.getMessage("logsSaved").replace("{OCCURRENCES}", String.valueOf(count));
-        if(config.getLogsInConsole()) {
+        if (config.getLogsInConsole()) {
             final String message = utils.decolor(logMessage);
             LOGGER.info(message);
         }
-        if(config.getLogsInGame()) {
+        if (config.getLogsInGame()) {
             final String message = utils.color(logMessage);
-            for(Player p : pl.getServer().getOnlinePlayers()) {
-                if(!p.hasPermission("superlog.getlogs")) continue;
+            for (final Player p : pl.getServer().getOnlinePlayers()) {
+                if (!p.hasPermission("superlog.getlogs")) continue;
                 p.sendMessage(message);
             }
         }
@@ -123,27 +125,43 @@ public final class Log {
     }
 
     protected void alertCommands(final String pName, final String command) {
-        if(config.isNotEnabled() || config.getAlertCommands().contains("*")) return;
-        if(!config.getAlertCommands().contains(command.split(" ")[0])) return;
+        if (config.isNotEnabled() || config.getAlertCommands().contains("*")) return;
+        if (!config.getAlertCommands().contains(command.split(" ")[0])) return;
 
         final String finalMessage = utils.color(config.getMessage("prefix") + config.getMessage("alertCommandsFormat").replace("{PLAYER}", pName).replace("{COMMAND}", command));
-        for(Player p : pl.getServer().getOnlinePlayers()) {
-            if(!p.hasPermission("superlog.getlogs")) continue;
-            if(p.getName().equals(pName)) continue;
+        for (final Player p : pl.getServer().getOnlinePlayers()) {
+            if (!p.hasPermission("superlog.getlogs")) continue;
+            if (p.getName().equals(pName)) continue;
             p.sendMessage(finalMessage);
         }
     }
 
-    public final Plugin getPlugin(){ return pl; }
+    public final Plugin getPlugin() {
+        return pl;
+    }
 
-    public final LogConfig getConfig(){ return config; }
+    public final LogConfig getConfig() {
+        return config;
+    }
 
-    public final LogUtils getUtils(){ return utils; }
+    public final LogUtils getUtils() {
+        return utils;
+    }
 
-    public final Map<String, CommandSender> getLogLive(){ return logLive; }
+    public final Map<String, CommandSender> getLogLive() {
+        return logLive;
+    }
 
-    public static void toggleDebug(){ DEBUG = !DEBUG; }
+    public static void toggleDebug() {
+        DEBUG = !DEBUG;
+    }
 
-    protected final BukkitTask getTask(){ return task; }
+    protected final BukkitTask getTask() {
+        return task;
+    }
+
+    protected void setTask(final BukkitTask task) {
+        this.task = task;
+    }
 
 }

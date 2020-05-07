@@ -1,13 +1,12 @@
-package fr.superlog.Commands;
+package fr.andross.superlog.Commands;
+
+import fr.andross.superlog.Log.Log;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-
-import fr.superlog.Log.Log;
 
 public class Cmdlive implements Cmd {
 

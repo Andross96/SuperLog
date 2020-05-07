@@ -1,12 +1,13 @@
-package fr.superlog.Log;
+package fr.andross.superlog.Log;
 
-import fr.superlog.Log.Utils.LogEvent;
+import fr.andross.superlog.Log.Utils.LogEvent;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
-import org.bukkit.entity.*;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.block.BlockEvent;
 import org.bukkit.event.block.BlockMultiPlaceEvent;
@@ -28,9 +29,9 @@ import org.bukkit.plugin.Plugin;
 import java.lang.reflect.Field;
 import java.util.Set;
 
-public class LogEvents {
+public final class LogEvents {
     private final Event e;
-    private LogSerializer s;
+    private final LogSerializer s;
     private String eventType;
     private String playerName;
 
@@ -39,29 +40,44 @@ public class LogEvents {
         this.s = new LogSerializer(logEvent);
     }
 
-    public String getPlayerName(){ return playerName; }
-    public String getEventType(){ return eventType; }
-    public String getEventName(){ return e.getEventName(); }
-    public String getMessage(){ return s.getMessage(); }
+    public Event getEvent() {
+        return e;
+    }
 
-    protected LogEvents runPlayerEvents(boolean isCitizensEnabled){
+    public String getPlayerName() {
+        return playerName;
+    }
+
+    public String getEventType() {
+        return eventType;
+    }
+
+    public String getEventName() {
+        return e.getEventName();
+    }
+
+    public String getMessage() {
+        return s.getMessage();
+    }
+
+    protected LogEvents runPlayerEvents(boolean isCitizensEnabled) {
         // Getting Player
         final Player p = ((PlayerEvent)e).getPlayer();
-        if(Log.DEBUG) Log.LOGGER.info("[Debug] Started " + e.getEventName());
+        if (Log.DEBUG) Log.LOGGER.info("[Debug] Started " + e.getEventName());
         // Checking if it's a npc
-        if(isCitizensEnabled && p.hasMetadata("NPC")) return null;
+        if (isCitizensEnabled && p.hasMetadata("NPC")) return null;
 
         // Checking conditions
-        if(s.isAnIgnoredEvent(p.getName(), null)) return null;
-        if(Log.DEBUG) Log.LOGGER.info("[Debug] Condition: ok");
-        if(s.serializeFields(e)) return null;
-        if(Log.DEBUG) Log.LOGGER.info("[Debug] Fields condition: ok");
+        if (s.isAnIgnoredEvent(p.getName(), null)) return null;
+        if (Log.DEBUG) Log.LOGGER.info("[Debug] Condition: ok");
+        if (s.serializeFields(e)) return null;
+        if (Log.DEBUG) Log.LOGGER.info("[Debug] Fields condition: ok");
 
         // Serializing the rest of the event
         playerName = p.getName();
         eventType = "PlayerEvents";
         s.serialize(p, null);
-        if(Log.DEBUG) Log.LOGGER.info("[Debug] Serializing: ok");
+        if (Log.DEBUG) Log.LOGGER.info("[Debug] Serializing: ok");
         return this;
     }
 
@@ -73,46 +89,56 @@ public class LogEvents {
         final Block b = ((BlockEvent)e).getBlock();
 
         // Checking conditions
-        if(s.isAnIgnoredEvent(b.getType().name(), null)) return null;
-        if(s.serializeFields(e)) return null;
+        if (s.isAnIgnoredEvent(b.getType().name(), null)) return null;
+        if (s.serializeFields(e)) return null;
 
         // Block event related to a player?
         Player p = null;
-        try{
+        try {
             Field f = e.getClass().getDeclaredField("player");
             f.setAccessible(true);
             p = (Player)f.get(e);
-        }catch(Exception ex){ /* we don't care */ }
+        } catch (Exception ex) { /* we don't care */ }
 
         // Adding args messages for block & player
         eventType = "BlockEvents";
-        if(p != null) playerName = p.getName();
+        if (p != null) playerName = p.getName();
         s.serialize(b, null);
         return this;
     }
 
-    protected LogEvents runEntityEvents(){
+    protected LogEvents runEntityEvents() {
         // Getting Entity, or the player if it's a player related event
         final Entity entity = ((EntityEvent)e).getEntity();
         final Player p = (entity instanceof Player) ? ((Player)entity) : null;
 
         // Checking conditions
-        if(s.isAnIgnoredEvent(entity.getType().name(), null)) return null;
-        if(s.serializeFields(e)) return null;
+        if (s.isAnIgnoredEvent(entity.getType().name(), null)) return null;
+        if (s.serializeFields(e)) return null;
 
         // Serializing the event
         eventType = "EntityEvents";
-        if(p != null) playerName = p.getName();
+        if (p != null) playerName = p.getName();
         s.serialize(entity, null);
         return this;
     }
 
-    protected LogEvents runHangingEvents(){
+    protected LogEvents runHangingEvents() {
         // Getting the Entity
         final Entity entity = ((HangingEvent)e).getEntity();
 
         // Checking conditions
-        if(s.serializeFields(e)) return null;
+        if (s.serializeFields(e)) return null;
+
+        // Hanging event related to a player?
+        final Player p;
+        try{
+            Field f = e.getClass().getDeclaredField("player");
+            f.setAccessible(true);
+            p = (Player) f.get(e);
+            s.serialize(p, "PLAYER");
+            playerName = p.getName();
+        } catch(Exception ex) { /* we don't care */ }
 
         // Serializing the event
         eventType = "HangingEvents";
@@ -127,8 +153,8 @@ public class LogEvents {
         final HumanEntity p = iv.getPlayer();
 
         // Checking conditions
-        if(s.isAnIgnoredEvent(iv.getType().name(), null)) return null;
-        if(s.serializeFields(e)) return null;
+        if (s.isAnIgnoredEvent(iv.getType().name(), null)) return null;
+        if (s.serializeFields(e)) return null;
 
         // Serializing the event
         eventType = "InventoryEvents";
@@ -137,14 +163,14 @@ public class LogEvents {
         s.serialize(p, "PLAYER");
 
         final Set<String> args = s.getLogEvent().getConditions("ARGS");
-        if(args == null) return this;
+        if (args == null) return this;
 
         // Serializing an Inventory
-        for(String arg : args) {
-            Location loc = iv.getTopInventory().getLocation();
+        for (final String arg : args) {
+            final Location loc = iv.getTopInventory().getLocation();
             String value = null;
-            switch(arg) {
-                case "NAME": value =  iv.getTitle(); break;
+            switch (arg) {
+                case "NAME": value = iv.getTitle(); break;
                 case "TYPE": value = (iv.getType() == InventoryType.CRAFTING ? "INVENTORY" : iv.getType().name()); break;
                 case "LOCWORLD": if(loc != null && loc.getWorld() != null) value = loc.getWorld().getName(); break;
                 case "LOCX": value = String.valueOf(loc.getBlockX()); break;
@@ -153,7 +179,7 @@ public class LogEvents {
                 case "ITEMS":
                     final StringBuilder message = new StringBuilder();
                     final ItemStack[] storage = iv.getType() == InventoryType.CRAFTING ? p.getInventory().getContents() : i.getContents();
-                    for(ItemStack item : storage) {
+                    for (final ItemStack item : storage) {
                         if(item == null || item.getType() == Material.AIR) continue;
                         message.append("[Name: ");
                         message.append(item.getType().name());
@@ -180,16 +206,16 @@ public class LogEvents {
         final Plugin pl = ((PluginEvent)e).getPlugin();
 
         // Checking conditions & fields
-        if(s.isAnIgnoredEvent(pl.getName(), null)) return null;
-        if(s.serializeFields(e)) return null;
+        if (s.isAnIgnoredEvent(pl.getName(), null)) return null;
+        if (s.serializeFields(e)) return null;
 
         eventType = "PluginEvents";
 
         // Serializing the rest of the event
-        Set<String> args = s.getLogEvent().getConditions("ARGS");
-        if(args == null) return this;
-        for(String arg : args) {
-            String value;
+        final Set<String> args = s.getLogEvent().getConditions("ARGS");
+        if (args == null) return this;
+        for (final String arg : args) {
+            final String value;
             switch(arg) {
                 case "NAME": value = pl.getName(); break;
                 case "DESCRIPTION": value = pl.getDescription().getDescription(); break;
@@ -206,7 +232,7 @@ public class LogEvents {
         eventType = "VehicleEvents";
 
         // Serializing
-        if(s.serializeFields(e)) return null;
+        if (s.serializeFields(e)) return null;
         s.serialize(((VehicleEvent)e).getVehicle(), null);
         return this;
     }
@@ -215,9 +241,9 @@ public class LogEvents {
         eventType = "WeatherEvents";
 
         // Serializing
-        if(s.serializeFields(e)) return null;
+        if (s.serializeFields(e)) return null;
         final Set<String> args = s.getLogEvent().getConditions("ARGS");
-        if(args != null && args.contains("WORLD")) s.replace("{WORLD}", ((WeatherEvent)e).getWorld().getName());
+        if (args != null && args.contains("WORLD")) s.replace("{WORLD}", ((WeatherEvent)e).getWorld().getName());
         return this;
     }
 
@@ -225,9 +251,9 @@ public class LogEvents {
         eventType = "WorldEvents";
 
         // Adding args for world
-        if(s.serializeFields(e)) return null;
+        if (s.serializeFields(e)) return null;
         final Set<String> args = s.getLogEvent().getConditions("ARGS");
-        if(args != null && args.contains("WORLD")) s.replace("{WORLD}", ((WorldEvent)e).getWorld().getName());
+        if (args != null && args.contains("WORLD")) s.replace("{WORLD}", ((WorldEvent)e).getWorld().getName());
         return this;
     }
 
@@ -236,11 +262,11 @@ public class LogEvents {
         eventType = "ChunkEvents";
 
         // Adding args for chunk
-        if(s.serializeFields(e)) return null;
+        if (s.serializeFields(e)) return null;
         final Set<String> args = s.getLogEvent().getConditions("ARGS");
-        if(args == null) return this;
-        for(String arg : args) {
-            String value;
+        if (args == null) return this;
+        for (String arg : args) {
+            final String value;
             switch(arg) {
                 case "LOCWORLD": value = c.getWorld().getName(); break;
                 case "LOCX": value = String.valueOf(c.getX()); break;

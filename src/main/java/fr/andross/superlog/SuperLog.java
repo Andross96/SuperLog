@@ -1,15 +1,17 @@
-package fr.superlog;
+package fr.andross.superlog;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import fr.superlog.Commands.Cmd;
-import fr.superlog.Log.Log;
+import fr.andross.superlog.Commands.Cmd;
+import fr.andross.superlog.Log.Log;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.StringUtil;
 
-public class SuperLog extends JavaPlugin {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public final class SuperLog extends JavaPlugin {
 	private Log log;
 
     @Override
@@ -26,7 +28,6 @@ public class SuperLog extends JavaPlugin {
     public void onDisable() { 
 		getLogger().info("Saved " + log.saveAll() + " logs.");
     }
-
     
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -37,7 +38,7 @@ public class SuperLog extends JavaPlugin {
 
 		final String prefix = log.getConfig().getMessage("prefix");
 
-    	if(args.length > 0 && args[0].equalsIgnoreCase("reload")){ // reload the plugin
+    	if (args.length > 0 && args[0].equalsIgnoreCase("reload")) { // reload the plugin
 			getServer().getScheduler().runTaskAsynchronously(log.getPlugin(), () -> {
 				// Saving logs
 				final int count = log.saveAll();
@@ -54,12 +55,12 @@ public class SuperLog extends JavaPlugin {
 		}
     	
     	try {
-			Cmd cmd = (Cmd)Class.forName("fr.superlog.Commands.Cmd" + args[0].toLowerCase()).newInstance();
+			final Cmd cmd = (Cmd) Class.forName("fr.andross.superlog.Commands.Cmd" + args[0].toLowerCase()).newInstance();
 	        cmd.run(log, sender, args);
-		}catch(Exception e) {
+		} catch (Exception e) {
 			sender.sendMessage(log.getUtils().color(
 					prefix + "&7Command usage:\n"
-							+ prefix + "  &7\u2937 &3/log filtrer &b<player> <event>\n"
+							+ prefix + "  &7\u2937 &3/log filter &b<player> <event>\n"
 							+ prefix + "  &7\u2937 &3/log live &b<player>\n"
 							+ prefix + "  &7\u2937 &3/log player &b<add|remove|contains|reload>\n"
 							+ prefix + "  &7\u2937 &3/log reload\n"
@@ -68,29 +69,19 @@ public class SuperLog extends JavaPlugin {
 		}
     	return true;
     }
-    
-    @Override
-	public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {    	
-    	List<String> list = new ArrayList<>();
 
-    	if(!sender.hasPermission("superlog.commands.access")) return list;
-    	
-    	if(args.length == 1) {
-    		list.add("filtrer");
-    		list.add("live");
-    		list.add("player");
-    		list.add("reload");
-    		list.add("log");
-    		list.add("toggle");
-    		list.add("version");
-    		return list;
-    	}
+    private final List<String> tab = Arrays.asList("filter", "live", "player", "reload", "log", "toggle", "version");
+    @Override
+	public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    	if (!sender.hasPermission("superlog.commands.access")) return new ArrayList<>();
+
+    	if (args.length == 1) return StringUtil.copyPartialMatches(args[0], tab, new ArrayList<>());
     	
     	try {
-			Cmd cmd = (Cmd)Class.forName("fr.superlog.Commands.Cmd" + args[0].toLowerCase()).newInstance();
+			final Cmd cmd = (Cmd) Class.forName("fr.andross.superlog.Commands.Cmd" + args[0].toLowerCase()).newInstance();
 	        return cmd.getTabCompletition(args);
-		}catch(Exception e) {
-			return list;
+		} catch (Exception e) {
+			return new ArrayList<>();
 		}
     }
 
