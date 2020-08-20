@@ -1,0 +1,25 @@
+name: SuperLog
+main: fr.andross.superlog.SuperLog
+version: '1.2'
+author: _Andross
+description: Async logging in files for events
+api-version: '1.13'
+commands:
+  superlog:
+    description: Main command for the plugin. Display help.
+    aliases: [log,slog,sl]
+premissions:
+  superlog.*:
+    description: Give all permissions
+  superlog.notify:
+    description: Get logs messages in game
+  superlog.commands.*:
+    description: Give access to commands
+    children:
+      superlog.commands.access: true
+      superlog.commands.filtrer: true
+      superlog.commands.live: true
+      superlog.commands.player: true
+      superlog.commands.reload: true
+      superlog.commands.save: true
+      superlog.commands.toggle: true

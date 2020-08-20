@@ -1,0 +1,60 @@
+# +————————————————————————————————————————————————————+ #
+# |——————————     SUPERLOG CONFIGURATION     ——————————| #
+# |——————————————————      v1.2      ——————————————————| #
+# +————————————————————————————————————————————————————+ #
+# |                   Documentation:                   | #
+# |            http://superlog.andross.fr/             | #
+# +————————————————————————————————————————————————————+ #
+
+## Time between saving logs (async)
+## 0 will save logs instantly (use more resource)
+## If you have many players, you should save the cache a bit more often, so you'll need a smaller save-delay.
+## If you don't have many players, you can save logs less often, so you can use a greater save-delay.
+save-delay: 300
+
+## This is how the date will be displayed into logs file
+date-format: 'HH:mm:ss'
+
+## This is how the log file will be named
+logs-format: '{DAY}-{MONTH}-{YEAR}_{TYPE}.log'
+
+## This is how the log live will be received ingame
+logs-live-format: '&7&o[{TIME}][{EVENT}] {LOG}'
+
+## If the plugin should displays in console when logs are saved
+logs-in-console: true
+
+## If the plugin should displays in game when logs are saved
+logs-in-game: false
+
+## Utilities
+## GZip old logs after X days
+gzip-logs-after: 2
+
+## Delete old logs after X days
+delete-logs:
+  after: 7
+  even-gzipped: true
+
+## Check for update (async)
+check-update: true
+
+## Alert in game when a command is used
+commands-alert:
+  list:
+    - '/gamemode'
+    - '/god'
+  message: '&7&l{PLAYER}&7 used: &e{COMMAND}'
+
+## Configurable messages
+messages:
+  prefix: '&3&l[&e&lLOG&3&l] '
+  noperm: '&cYou do not have permission.'
+  logs-saved: '&7Saved {LOGS} files.'
+
+## List of events to log
+## The event names ARE case sensitive
+events:
+  AsyncPlayerChatEvent:
+    enabled: true
+    message: 'said {MESSAGE}'
