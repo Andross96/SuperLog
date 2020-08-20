@@ -1,6 +1,6 @@
 name: SuperLog
 main: fr.andross.superlog.SuperLog
-version: '1.1.5'
+version: '1.2'
 author: _Andross
 description: Async logging in files for events
 api-version: '1.13'
@@ -10,15 +10,12 @@ commands:
     aliases: [log,slog,sl]
 premissions:
   superlog.*:
-    default: op
     description: Give all permissions
-  superlog.getlogs:
-     default: op
-     description: Get logs messages in game
+  superlog.notify:
+    description: Get logs messages in game
   superlog.commands.*:
-     default: op
-     description: Give access to commands
-     children:
+    description: Give access to commands
+    children:
       superlog.commands.access: true
       superlog.commands.filtrer: true
       superlog.commands.live: true

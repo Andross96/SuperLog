@@ -1,132 +1,180 @@
-package fr.andross.superlog.Log;
+/*
+ * SuperLog - Save almost all minecraft actions into logs!
+ * Copyright (C) 2020 André Sustac
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package fr.andross.superlog.log;
 
-import fr.andross.superlog.Log.Utils.LogEvent;
+import fr.andross.superlog.SuperLog;
+import fr.andross.superlog.utils.LoggedEvent;
+import fr.andross.superlog.utils.Utils;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+/**
+ * Log config
+ * @version 1.2
+ * @author Andross
+ */
 public final class LogConfig {
-    private final FileConfiguration config;
     private final Set<String> alertCommands = new HashSet<>();
     private final boolean isCitizensEnabled;
+    private final boolean bukkitNewApi;
     private boolean enabled = true;
+    private DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 
-    public LogConfig(final Log log) {
-        final Plugin pl = log.getPlugin();
-        isCitizensEnabled = pl.getServer().getPluginManager().getPlugin("Citizens") != null;
-        final boolean versionBiggerThan1_13 = pl.getServer().getBukkitVersion().contains("1.13") || pl.getServer().getBukkitVersion().contains("1.14") || pl.getServer().getBukkitVersion().contains("1.15");
+    /**
+     * Should not be instantiated. Use {@link SuperLog#getLogConfig()} instead.
+     * @param pl the plugin instance
+     * @param sender the sender
+     */
+    public LogConfig(@NotNull final SuperLog pl, @NotNull final CommandSender sender) {
+        // Is Citizens enabled?
+        final Plugin citizensPlugin = pl.getServer().getPluginManager().getPlugin("Citizens");
+        isCitizensEnabled = citizensPlugin != null && citizensPlugin.isEnabled();
 
-        ///////////////////////////////
-        // Checking config.yml
-        ///////////////////////////////
-        pl.saveDefaultConfig();
-        pl.reloadConfig();
-        config = pl.getConfig();
+        // 1.13+?
+        final String bukkitVersion = Bukkit.getBukkitVersion();
+        bukkitNewApi = bukkitVersion.contains("1.13") || bukkitVersion.contains("1.14") || bukkitVersion.contains("1.15") || bukkitVersion.contains("1.16");
 
-        int save_delay = config.getInt("save-delay");
-        if (save_delay < 0) {
+        // Config
+        final FileConfiguration config = pl.getConfig();
+        final String prefix = pl.getLogUtils().getColoredString("messages.prefix");
+
+        // Save delay
+        if (config.getInt("save-delay") < 0) {
             config.set("save-delay", 300);
-            Log.LOGGER.warning("Save-delay invalid in config.yml. Using default: 300s.");
+            sender.sendMessage(prefix + Utils.color("&c[Config] Invalid '&esave-delay&c'. Using default: 300s."));
         }
 
+        // Date format
+        final String dateFormatString = config.getString("date-format");
+        if (dateFormatString == null) {
+            sender.sendMessage(prefix + Utils.color("&c[Config] Unknown or not set '&edate-format&c'. Using default formatting instead (HH:mm:ss)."));
+        } else {
+            try {
+                final DateFormat testFormat = new SimpleDateFormat(dateFormatString);
+                testFormat.format(new Date());
+                dateFormat = testFormat;
+            } catch (final Exception e) {
+                dateFormat = new SimpleDateFormat("HH:mm:ss");
+                sender.sendMessage(prefix + Utils.color("&c[Config] Invalid '&edate-format&c'. Using default formatting instead (HH:mm:ss)."));
+            }
+        }
+
+        // Logs format
+        String logsFormat = config.getString("logs-format");
         try {
-            log.getUtils().getTime(config.getString("date-format"));
-        } catch (Exception e) {
-            if (Log.DEBUG) e.printStackTrace();
-            config.set("date-format", "HH:mm:ss");
-            Log.LOGGER.warning("Invalid 'date-format' in config.yml. Using default formatting instead.");
+            if (logsFormat == null || logsFormat.isEmpty()) throw new IllegalStateException();
+            for (final char c : Utils.forbiddenFileNameChar)
+                if (logsFormat.indexOf(c) > 0)
+                    throw new IllegalArgumentException();
+        } catch (final IllegalStateException e) {
+            config.set("logs-format", "{DAY}-{MONTH}-{YEAR}_{TYPE}.log");
+            sender.sendMessage(prefix + Utils.color("&c[Config] Empty or not set '&elogs-format&c'. Using default."));
+        } catch (final IllegalArgumentException e) {
+            config.set("logs-format", "{DAY}-{MONTH}-{YEAR}_{TYPE}.log");
+            sender.sendMessage(prefix + Utils.color("&c[Config] '&elogs-format&c' contains invalid file name character. Using default."));
         }
 
-        String logsFormat = config.getString("logsFormat");
-        try {
-            if(logsFormat == null || logsFormat.isEmpty()) throw new Exception();
-            char[] forbiddenFileNameChar = { '/', '\n', '\r', '\t', '\0', '\f', '`', '?', '*', '\\', '<', '>', '|', '\"', ':' };
-            for (char c : forbiddenFileNameChar) if(logsFormat.indexOf(c) > 0) throw new Exception();
-        } catch (Exception e) {
-            if(Log.DEBUG) e.printStackTrace();
-            config.set("logsFormat", "{DAY}-{MONTH}-{YEAR}_{TYPE}.log");
-            Log.LOGGER.warning("Invalid logsFormat set in config.yml. Using default.");
+        // Logs live format
+        String logsLiveFormat = config.getString("logs-live-format");
+        if (logsLiveFormat == null || logsLiveFormat.isEmpty()) {
+            config.set("logs-live-format", "&7&o[{TIME}][{EVENT}] {LOG}.log");
+            sender.sendMessage(prefix + Utils.color("&c[Config] Invalid '&elogs-live-format&c'. Using default."));
         }
 
-        String logsLiveFormat = config.getString("logsLiveFormat");
-        if (logsLiveFormat == null || logsLiveFormat.isEmpty()){
-            config.set("logsLiveFormat", "&7&o[{TIME}][{EVENT}] {LOG}.log");
-            Log.LOGGER.warning("Invalid logsFormat set in config.yml. Using default.");
-        }
+        // Getting all commands that should be alerted when used
+        alertCommands.addAll(config.getStringList("commands-alert.list").stream().map(String::toLowerCase).collect(Collectors.toList()));
 
-        // Loading loggedCommands
-        alertCommands.addAll(config.getStringList("alertCommands"));
 
         ///////////////////////////////
         // Loading events
         ///////////////////////////////
-        // Disable previously activated listeners
-        HandlerList.unregisterAll(pl);
         // Preparing the new listener
         final Listener listener = new Listener() { };
 
-        // Load the alertCommands event:
+        // Registering alert commands listener if needed
         if (!alertCommands.isEmpty()) {
             final EventExecutor eventExecutor = (bukkitListener, bukkitEvent) -> {
-                if(!enabled) return;
+                if (!enabled) return;
                 final PlayerCommandPreprocessEvent e = (PlayerCommandPreprocessEvent) bukkitEvent;
-                log.alertCommands(e.getPlayer().getName(), e.getMessage());
+                pl.getLogManager().alertCommands(e.getPlayer().getName(), e.getMessage().toLowerCase());
             };
-            pl.getServer().getPluginManager().registerEvent(PlayerCommandPreprocessEvent.class, listener, EventPriority.MONITOR, eventExecutor, log.getPlugin());
+            Bukkit.getPluginManager().registerEvent(PlayerCommandPreprocessEvent.class, listener, EventPriority.MONITOR, eventExecutor, pl);
         }
 
-        // Load events
+        // Getting events section
         final ConfigurationSection events = config.getConfigurationSection("events");
         if (events == null) {
-            Log.LOGGER.warning("[!!] There is nothing to log. Add events in config.yml.");
+            sender.sendMessage(prefix + Utils.color("&c[Config] There is nothing to log (empty '&eevents&c' section)."));
             return;
         }
-        
+
         // For each event
         int count = 0;
         final Pattern argsPattern = Pattern.compile("\\{(.*?)\\}"); // e.g: player.name
-        for (final String eventName : events.getKeys(false)) {
+        events: for (final String eventName : events.getKeys(false)) {
             // Checking if event is enabled
             final ConfigurationSection event = events.getConfigurationSection(eventName);
             if (event == null || !event.getBoolean("enabled")) continue;
-            
+
             // Starting processing the event
             // Getting event class
-            final Class<? extends Event> eventClass = getEventClass(eventName);
-            if (eventClass == null){
-                Log.LOGGER.warning("[!!] Can't load event '" + eventName + "': event class is not found.");
+            final Class<? extends Event> eventClass = Utils.getEventClass(eventName);
+            if (eventClass == null) {
+                sender.sendMessage(prefix + Utils.color("&c[Config] Can not load event '&e" + eventName + "&c': event class is not found."));
                 continue;
             }
-            
-            // Intialise variables needed to create a correct LogEvent
-            final Map<String, Set<String>> conditions = new HashMap<>();
-            Field[] fields = null;
 
             // Loading event message
             String message = event.getString("message");
             if (message == null || message.isEmpty()) message = "executed.";
+
+            // Initialize args
+            final Map<String, List<String>> conditions = new HashMap<>();
+            Field[] fields = null;
+
             // Loading args from message
             final Matcher m = argsPattern.matcher(message);
-            final Set<String> args = new HashSet<>();
-            final Set<Field> fieldsSet = new HashSet<>();
+            final List<String> args = new ArrayList<>();
+            final List<Field> fieldsSet = new ArrayList<>();
             while (m.find()) {
                 String arg = m.group(1);
-                if(!arg.matches("(?i)name|type|health|ip|locworld|locx|locy|locz|lastdeathcause|lastdeathby")) { // Loading fields
+                if (!arg.matches("(?i)name|type|health|ip|locworld|locx|locy|locz|lastdeathcause|lastdeathby")) { // Loading fields
                     final String field = arg.contains(".") ? arg.split("\\.")[0] : arg;
                     Field f = null;
 
-                    for (final Field fieldsInClass : getAllFields(eventClass)) {
+                    for (final Field fieldsInClass : Utils.getAllFields(eventClass)) {
                         if (fieldsInClass.getName().equalsIgnoreCase(field)) {
                             fieldsInClass.setAccessible(true);
                             fieldsSet.add(fieldsInClass);
@@ -135,7 +183,7 @@ public final class LogConfig {
                         }
                     }
 
-                    if (f == null) Log.LOGGER.warning("[!!] Can not found field '" + field + "' for event '" + eventName + "'.");
+                    if (f == null) sender.sendMessage(prefix + Utils.color("&c[Config] Can not found field '&e" + field + "&c' for event '&e" + eventName + "&c'."));
                 }
                 arg = arg.contains(".") ? arg.split("\\.")[1].toUpperCase() : arg.toUpperCase();
                 args.add(arg);
@@ -143,17 +191,15 @@ public final class LogConfig {
             if (!args.isEmpty()) conditions.put("ARGS", args);
 
             // Loading conditions
-            boolean errorInConditions = false;
             for (final String condition : event.getKeys(false)) {
-                if (condition.equals("enabled")) continue;
-                if (condition.equals("message")) continue;
+                if (condition.equalsIgnoreCase("enabled")) continue;
+                if (condition.equalsIgnoreCase("message")) continue;
 
                 List<String> list;
                 if (!event.isList(condition)) { // Try to get conditions from a String
                     if (!event.isString(condition)) {
-                        Log.LOGGER.warning("[!!] Invalid condition list '" + condition + "' for event '" + eventName + "'.");
-                        errorInConditions = true;
-                        break;
+                        sender.sendMessage(prefix + Utils.color("&c[Config] Invalid condition list '&e" + condition + "&c' for event '&e" + eventName + "&c'."));
+                        continue events;
                     }
 
                     final String conditionsList = event.getString(condition);
@@ -166,8 +212,8 @@ public final class LogConfig {
                 if (condition.contains("-")) { // Field condition
                     final String field = condition.split("-")[0];
                     Field f = null;
-                    for(final Field fieldsInClass : getAllFields(eventClass)) {
-                        if(fieldsInClass.getName().equalsIgnoreCase(field)) {
+                    for (final Field fieldsInClass : Utils.getAllFields(eventClass)) {
+                        if (fieldsInClass.getName().equalsIgnoreCase(field)) {
                             if (!fieldsSet.contains(fieldsInClass)) {
                                 fieldsInClass.setAccessible(true);
                                 fieldsSet.add(fieldsInClass);
@@ -177,207 +223,94 @@ public final class LogConfig {
                         }
                     }
                     if (f == null) {
-                        Log.LOGGER.warning("[!!] Unknown condition '" + condition + "': unknown field '" + field + "' for event '" + eventName + "'.");
-                        errorInConditions = true;
-                        break;
+                        sender.sendMessage(prefix + Utils.color("&c[Config] Unknown condition '&e" + condition + "&c': unknown field '&e" + field + "&c' for event '&e" + eventName + "&c'."));
+                        continue events;
                     }
                 }
-                final Set<String> conditionsSet = new HashSet<>();
-                for (final String s : list) conditionsSet.add(s.toUpperCase());
-                if (!conditionsSet.isEmpty()) conditions.put(condition.toUpperCase(), conditionsSet);
+                final List<String> conditionsList = new ArrayList<>();
+                for (final String s : list) conditionsList.add(s.toUpperCase());
+                if (!conditionsList.isEmpty()) conditions.put(condition.toUpperCase(), conditionsList);
             }
-
-            // If conditions are not valid, we don't register the event
-            if (errorInConditions) continue;
 
             // Saving fields
             if (!fieldsSet.isEmpty()) fields = fieldsSet.toArray(new Field[0]);
 
-            // Creating the LogEvent
-            final LogEvent logEvent = new LogEvent(conditions, message, fields, versionBiggerThan1_13);
+            // Creating the LogEventConfig
+            final LoggedEvent loggedEvent = new LoggedEvent(message, conditions, fields);
 
             // Creating the EventExecutor method, based on event type
-            final EventExecutor eventExecutor = createEventExecutor(log, eventClass, logEvent);
+            final EventExecutor eventExecutor = pl.getLogUtils().createEventExecutor(eventClass, loggedEvent);
             if (eventExecutor == null) {
-                Log.LOGGER.warning("[!!] Event '" + eventName + "' is not supported yet.");
+                sender.sendMessage(prefix + Utils.color("&c[Config] Event '&e" + eventName + "&c' is not loggable/supported."));
                 continue;
             }
 
             // Register event
             // Priority monitor for all, except for the PlayerCommandPreprocessEvent, which have to be started firstly
             final EventPriority priority = eventName.equals("PlayerCommandPreprocessEvent") ? EventPriority.LOWEST : EventPriority.MONITOR;
-            try {
-                pl.getServer().getPluginManager().registerEvent(eventClass, listener, priority, eventExecutor, log.getPlugin(), false);
-            } catch(Exception ex) {
-                if (Log.DEBUG) ex.printStackTrace();
-                Log.LOGGER.warning("[!!] Event '" + eventName + "' is not valid or not supported yet.");
-            }
+            Bukkit.getPluginManager().registerEvent(eventClass, listener, priority, eventExecutor, pl);
             count++; // one more event registered
         }
 
         // Result
-        if (count == 0) Log.LOGGER.warning("[!!] There is nothing to log. Add events in config.yml.");
-        else if(count == 1) Log.LOGGER.info("Listening to 1 event.");
-        else Log.LOGGER.info("Listening to " + count + " events.");
+        if (count == 0) sender.sendMessage(prefix + Utils.color("&e[!!] There is nothing to log. Add events in config.yml."));
+        else sender.sendMessage(prefix + Utils.color("&aLogging &e" + count + "&a event" + (count > 1 ? "s" : "") + "."));
 
         // Running async loop for saving cache
-        if (save_delay != 0 && count != 0) {
-            if (log.getTask() != null) log.getTask().cancel();
-            log.setTask(pl.getServer().getScheduler().runTaskTimerAsynchronously(pl, log::saveAll, 0L, (long) (save_delay * 20)));
-            Log.LOGGER.info("Saving logs async each " + save_delay + " seconds.");
+        final int saveDelay = config.getInt("save-delay");
+        if (saveDelay != 0 && count != 0) {
+            Bukkit.getScheduler().runTaskTimerAsynchronously(pl, pl.getLogManager()::saveAll, saveDelay * 20L, (saveDelay * 20L));
+            sender.sendMessage(prefix + Utils.color("&aSaving logs async each &e" + saveDelay + "&a seconds."));
         }
     }
 
-    private final String[] packageNames = new String[] {
-            // Bukkit
-            "org.bukkit.event.block.", "org.bukkit.event.enchantment.", "org.bukkit.event.entity.",
-            "org.bukkit.event.hanging.", "org.bukkit.event.inventory." , "org.bukkit.event.player.",
-            "org.bukkit.event.server.", "org.bukkit.event.vehicle.", "org.bukkit.event.weather.",
-            "org.bukkit.event.world.",
-            // Paper
-            "com.destroystokyo.paper.event.block.", "com.destroystokyo.paper.event.entity.",
-            "com.destroystokyo.paper.event.player.", "com.destroystokyo.paper.event.profile.",
-            "com.destroystokyo.paper.event.server."
-    };
-
-    @SuppressWarnings("unchecked")
-    private Class<? extends Event> getEventClass(final String eName) {
-        for (final String className : packageNames) {
-            try {
-                return (Class<? extends Event>) Class.forName(className + eName);
-            } catch(final Exception ignored) {
-                /* NoThing:) */
-            }
-        }
-        return null;
-    }
-
-    private Set<Field> getAllFields(Class<?> clazz) {
-        final Set<Field> fields = new HashSet<>();
-        while (clazz != null) {
-            Collections.addAll(fields, clazz.getDeclaredFields());
-            clazz = clazz.getSuperclass();
-        }
-        return fields;
-    }
-
-    private EventExecutor createEventExecutor(final Log log, final Class<? extends Event> event, final LogEvent logEvent) {
-        EventExecutor eventExecutor = null;
-        Class<?> superClasses = event.getSuperclass();
-        while (superClasses != null) {
-            switch (superClasses.getSimpleName()) {
-                case "PlayerEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runPlayerEvents(isCitizensEnabled));
-                    };
-                    break;
-                case "BlockEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runBlockEvents());
-                    };
-                    break;
-                case "EntityEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runEntityEvents());
-                    };
-                    break;
-                case "HangingEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runHangingEvents());
-                    };
-                    break;
-                case "InventoryEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runInventoryEvents());
-                    };
-                    break;
-                case "ServerEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runServerEvents());
-                    };
-                    break;
-                case "PluginEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runPluginEvents());
-                    };
-                    break;
-                case "VehicleEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runVehicleEvents());
-                    };
-                    break;
-                case "WeatherEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runWeatherEvents());
-                    };
-                    break;
-                case "WorldEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runWorldEvents());
-                    };
-                    break;
-                case "ChunkEvent":
-                    eventExecutor = (bukkitListener,bukkitEvent) -> {
-                        if (enabled) log.log(new LogEvents(bukkitEvent, logEvent).runChunkEvents());
-                    };
-                    break;
-                default: superClasses = superClasses.getSuperclass(); break;
-            }
-            if (eventExecutor != null) break;
-        }
-        return eventExecutor;
-    }
-
-    protected int getSaveDelay() {
-        return config.getInt("save-delay");
-    }
-
-    protected String getDateFormat() {
-        return config.getString("date-format");
-    }
-
-    public String getLogsFormat() {
-        return config.getString("logsFormat");
-    }
-
-    public String getLogsLiveFormat() {
-        return config.getString("logsLiveFormat");
-    }
-
-    protected boolean getLogsInConsole() {
-        return config.getBoolean("logsInConsole");
-    }
-
-    protected boolean getLogsInGame() {
-        return config.getBoolean("logsInGame");
-    }
-
-    public int getGZipLogsAfter() {
-        return config.getInt("gzipLogsAfter");
-    }
-
-    public int getDeleteLogs() {
-        return config.getInt("deleteLogs.after");
-    }
-
-    public boolean getDeleteLogsGZipped() {
-        return config.getBoolean("deleteLogs.evenGZippedLogs");
-    }
-
-    public String getMessage(final String message) {
-        return config.getString("messages." + message);
-    }
-
-    protected Set<String> getAlertCommands() {
+    /**
+     * Get the set of commands that should be alerted when used
+     * @return set of commands that should be alerted
+     */
+    @NotNull
+    public Set<String> getAlertCommands() {
         return alertCommands;
     }
 
-    public boolean isNotEnabled() {
-        return !enabled;
+    /**
+     * If Citizens is enabled on this instance
+     * @return true if Citizens is running, otherwise false
+     */
+    public boolean isCitizensEnabled() {
+        return isCitizensEnabled;
     }
 
-    public void toggleEnabled() {
-        enabled = !enabled;
+    /**
+     * If we are running on the new api-version 1.13+ version
+     * @return true if MC>=1.13, otherwise false
+     */
+    public boolean isBukkitNewApi() {
+        return bukkitNewApi;
     }
 
+    /**
+     * Check if the plugin is manually enabled
+     * @return true if the plugin is enabled, otherwise false
+     */
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /**
+     * Set manually if the plugin should be enabled
+     * @param enabled if the plugin should be enabled
+     */
+    public void setEnabled(final boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    /**
+     * Get the date format entered in the config
+     * @return the date format configured in this config
+     */
+    @NotNull
+    public DateFormat getDateFormat() {
+        return dateFormat;
+    }
 }

@@ -1,3 +1,11 @@
+v1.2:
+  -> Optimized live logging: can now listen to multiple players;
+  -> Code reorganization & optimization;
+  -> Added metrics;
+  -> Added update check;
+  -> Fixed some event deserializations;
+  -> Revamped config & documentation;
+--------------------------------------------
 v1.1.5:
   -> Added support for paper events;
   -> Command "filtrer" renamed to "filter";
